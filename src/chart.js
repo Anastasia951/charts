@@ -8,6 +8,7 @@ export function chart(root, data) {
   const DPI_WIDTH = WIDTH * 2
   const DPI_HEIGHT = HEIGHT * 2
   const ROWS_COUNT = 5
+  const SPEED = 3000
   const PADDING = 40
   const VIEW_HEIGHT = DPI_HEIGHT - PADDING * 2
   const VIEW_WIDTH = DPI_WIDTH
@@ -15,7 +16,7 @@ export function chart(root, data) {
   const slider = sliderChart(root.querySelector('[data-el="slider"]'), data, DPI_WIDTH)
   const ctx = canvas.getContext('2d')
   const tooltipEl = tooltip(document.querySelector('[data-el]'))
-
+  let prevMax
 
   function clear() {
     ctx.clearRect(0, 0, DPI_WIDTH, DPI_HEIGHT)
@@ -75,6 +76,9 @@ export function chart(root, data) {
 
   }
 
+  function translateX(length, xRatio, left) {
+    return -1 * Math.round(left * length * xRatio / 100)
+  }
   function mousemove({ clientX, clientY }) {
     const { left, top } = canvas.getBoundingClientRect()
     proxy.mouse = {
@@ -88,6 +92,17 @@ export function chart(root, data) {
   function mouseleave() {
     proxy.mouse = null
     tooltipEl.hide()
+  }
+  function getMax(yMax) {
+    let step = (yMax - prevMax) / SPEED
+    if (proxy.max < yMax) {
+      proxy.max += step
+    } else if (proxy.max > yMax) {
+      proxy.max = yMax
+      prevMax = yMax
+    }
+
+    return proxy.max
   }
 
   function paint() {
@@ -104,21 +119,26 @@ export function chart(root, data) {
       return res
     })
     const [yMin, yMax] = computeBoundaries({ columns, types: data.types })
-
-    const yRatio = computeYRatio(VIEW_HEIGHT, yMax, yMin)
+    if (!prevMax) {
+      prevMax = yMax
+      proxy.max = yMax
+    }
+    const max = getMax(yMax)
+    const yRatio = computeYRatio(VIEW_HEIGHT, max, yMin)
     const xRatio = computeXRatio(VIEW_WIDTH, columns[0].length)
-    const yData = columns.filter(col => data.types[col[0]] === 'line')
+    const yData = data.columns.filter(col => data.types[col[0]] === 'line')
+    const xData = data.columns.filter(col => data.types[col[0]] !== 'line')[0]
+    const translate = translateX(data.columns[0].length, xRatio, proxy.pos[0])
 
-    const xData = columns.filter(col => data.types[col[0]] !== 'line')[0]
 
-    yAxis(yMin, yMax)
+    yAxis(yMin, max)
     xAxis(xData, xRatio, proxy, yData)
     yData.forEach(col => {
       const name = col[0]
       const coords = col.map(toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING, yMin))
       coords.shift()
 
-      line(ctx, coords, colors[name])
+      line(ctx, coords, colors[name], translate)
       for (const [x, y] of coords) {
         if (isOver(proxy
           .mouse, x, coords.length, DPI_WIDTH)) {
