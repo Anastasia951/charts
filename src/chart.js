@@ -1,7 +1,10 @@
+import { tooltip } from './tooltip.js'
 import { toDate, isOver, line, circle, computeBoundaries } from './utils.js'
 
 export function chart(canvas, data) {
+  console.log(data)
   const ctx = canvas.getContext('2d')
+  const tooltipEl = tooltip(document.querySelector('[data-el]'))
   const WIDTH = 600
   const HEIGHT = 200
   const DPI_WIDTH = WIDTH * 2
@@ -15,21 +18,32 @@ export function chart(canvas, data) {
     ctx.clearRect(0, 0, DPI_WIDTH, DPI_HEIGHT)
   }
 
-  function xAxis(data, xRatio, { mouse }) {
+  function xAxis(axis, xRatio, { mouse }, yData) {
     const colsCount = 6
-    const step = Math.round(data.length / colsCount)
+    const step = Math.round(axis.length / colsCount)
     ctx.beginPath()
-    for (let i = 1; i < data.length; i++) {
+    for (let i = 1; i < axis.length; i++) {
       const x = i * xRatio
       if ((i - 1) % step === 0) {
-        const text = toDate(data[i])
+        const text = toDate(axis[i])
         ctx.fillText(text, x, DPI_HEIGHT - 10)
       }
-      if (isOver(mouse, x, data.length, DPI_WIDTH)) {
+      if (isOver(mouse, x, axis.length, DPI_WIDTH)) {
         ctx.save()
         ctx.moveTo(x, 0)
         ctx.lineTo(x, DPI_HEIGHT - PADDING)
+        tooltipEl.show(proxy.mouse.tooltip, {
+          title: toDate(axis[i]),
+          items: yData.map(col => {
+            return {
+              color: data.colors[col[0]],
+              name: data.names[col[0]],
+              value: col[i + 1]
+            }
+          })
+        })
         ctx.restore()
+
       }
 
     }
@@ -67,13 +81,18 @@ export function chart(canvas, data) {
     }
   }
   function mousemove({ clientX, clientY }) {
-    const { left } = canvas.getBoundingClientRect()
+    const { left, top } = canvas.getBoundingClientRect()
     proxy.mouse = {
-      x: (clientX - left) * 2
+      x: (clientX - left) * 2,
+      tooltip: {
+        left: clientX - left,
+        top: clientY - top
+      }
     }
   }
   function mouseleave() {
     proxy.mouse = null
+    tooltipEl.hide()
   }
 
   function paint() {
@@ -87,7 +106,7 @@ export function chart(canvas, data) {
     const xData = data.columns.filter(col => data.types[col[0]] !== 'line')[0]
 
     yAxis(yMin, yMax)
-    xAxis(xData, xRatio, proxy)
+    xAxis(xData, xRatio, proxy, yData)
     yData.forEach(col => {
       const name = col[0]
       const coords = col.map(toCoords(xRatio, yRatio))
@@ -104,6 +123,7 @@ export function chart(canvas, data) {
 
   }
   let raf
+
   canvas.style.width = WIDTH + 'px'
   canvas.style.height = HEIGHT + 'px'
   canvas.width = DPI_WIDTH
@@ -131,7 +151,3 @@ export function chart(canvas, data) {
     }
   }
 }
-
-
-
-
