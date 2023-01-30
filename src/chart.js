@@ -1,6 +1,6 @@
 import { sliderChart } from './sliderChart.js'
 import { tooltip } from './tooltip.js'
-import { toDate, isOver, line, circle, computeBoundaries, toCoords } from './utils.js'
+import { toDate, isOver, line, circle, computeBoundaries, toCoords, computeYRatio, computeXRatio } from './utils.js'
 
 export function chart(root, data) {
   const WIDTH = 600
@@ -93,23 +93,35 @@ export function chart(root, data) {
   function paint() {
     clear(ctx)
     const { colors } = data
-    const [yMin, yMax] = computeBoundaries(data)
-    const yRatio = VIEW_HEIGHT / (yMax - yMin)
-    const xRatio = VIEW_WIDTH / (data.columns[0].length - 2)
-    const yData = data.columns.filter(col => data.types[col[0]] === 'line')
+    const length = data.columns[0].length
+    let leftIndex = Math.round(length * proxy.pos[0] / 100)
+    let rightIndex = Math.round(length * proxy.pos[1] / 100)
+    const columns = data.columns.map(col => {
+      const res = col.slice(leftIndex, rightIndex)
+      if (typeof res[0] !== 'string') {
+        res.unshift(col[0])
+      }
+      return res
+    })
+    const [yMin, yMax] = computeBoundaries({ columns, types: data.types })
 
-    const xData = data.columns.filter(col => data.types[col[0]] !== 'line')[0]
+    const yRatio = computeYRatio(VIEW_HEIGHT, yMax, yMin)
+    const xRatio = computeXRatio(VIEW_WIDTH, columns[0].length)
+    const yData = columns.filter(col => data.types[col[0]] === 'line')
+
+    const xData = columns.filter(col => data.types[col[0]] !== 'line')[0]
 
     yAxis(yMin, yMax)
     xAxis(xData, xRatio, proxy, yData)
     yData.forEach(col => {
       const name = col[0]
-      const coords = col.map(toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING))
+      const coords = col.map(toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING, yMin))
       coords.shift()
 
       line(ctx, coords, colors[name])
       for (const [x, y] of coords) {
-        if (isOver(proxy.mouse, x, coords.length, DPI_WIDTH)) {
+        if (isOver(proxy
+          .mouse, x, coords.length, DPI_WIDTH)) {
           circle(ctx, [x, y], 5, colors[name])
           break;
         }
@@ -130,6 +142,10 @@ export function chart(root, data) {
       raf = requestAnimationFrame(paint)
       return result
     }
+  })
+
+  slider.subscribe(pos => {
+    proxy.pos = pos
   })
 
 
