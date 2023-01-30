@@ -70,3 +70,12 @@ export function computeBoundaries({ columns, types }) {
 export function css(el, styles = {}) {
   Object.assign(el.style, styles)
 }
+
+export function toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING) {
+  return function (y, i) {
+    return [
+      Math.floor((i - 1) * xRatio),
+      Math.floor(DPI_HEIGHT - PADDING - y * yRatio)
+    ]
+  }
+}

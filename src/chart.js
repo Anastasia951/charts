@@ -1,10 +1,8 @@
+import { sliderChart } from './sliderChart.js'
 import { tooltip } from './tooltip.js'
-import { toDate, isOver, line, circle, computeBoundaries } from './utils.js'
+import { toDate, isOver, line, circle, computeBoundaries, toCoords } from './utils.js'
 
-export function chart(canvas, data) {
-  console.log(data)
-  const ctx = canvas.getContext('2d')
-  const tooltipEl = tooltip(document.querySelector('[data-el]'))
+export function chart(root, data) {
   const WIDTH = 600
   const HEIGHT = 200
   const DPI_WIDTH = WIDTH * 2
@@ -13,6 +11,11 @@ export function chart(canvas, data) {
   const PADDING = 40
   const VIEW_HEIGHT = DPI_HEIGHT - PADDING * 2
   const VIEW_WIDTH = DPI_WIDTH
+  const canvas = root.querySelector('[data-el="main"]')
+  const slider = sliderChart(root.querySelector('[data-el="slider"]'), data, DPI_WIDTH)
+  const ctx = canvas.getContext('2d')
+  const tooltipEl = tooltip(document.querySelector('[data-el]'))
+
 
   function clear() {
     ctx.clearRect(0, 0, DPI_WIDTH, DPI_HEIGHT)
@@ -72,14 +75,6 @@ export function chart(canvas, data) {
 
   }
 
-  function toCoords(xRatio, yRatio) {
-    return function (y, i) {
-      return [
-        Math.floor((i - 1) * xRatio),
-        Math.floor(DPI_HEIGHT - PADDING - y * yRatio)
-      ]
-    }
-  }
   function mousemove({ clientX, clientY }) {
     const { left, top } = canvas.getBoundingClientRect()
     proxy.mouse = {
@@ -109,7 +104,7 @@ export function chart(canvas, data) {
     xAxis(xData, xRatio, proxy, yData)
     yData.forEach(col => {
       const name = col[0]
-      const coords = col.map(toCoords(xRatio, yRatio))
+      const coords = col.map(toCoords(xRatio, yRatio, DPI_HEIGHT, PADDING))
       coords.shift()
 
       line(ctx, coords, colors[name])
