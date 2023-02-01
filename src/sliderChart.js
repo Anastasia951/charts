@@ -126,6 +126,16 @@ export function sliderChart(root, data, DPI_WIDTH) {
     subscribe(fn) {
       nextFn = fn.bind(this)
       fn(getPosition())
+    },
+    setTheme(theme, THEMES) {
+      console.log(theme)
+      css(left, {
+        background: THEMES[theme].slider
+      })
+      css(right, {
+        background: THEMES[theme].slider
+      })
+
     }
   }
 }

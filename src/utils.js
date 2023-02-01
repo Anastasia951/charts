@@ -50,10 +50,10 @@ export function line(ctx, coords, color = 'violet', translate) {
   ctx.closePath()
 }
 
-export function circle(ctx, [x, y], radius, color) {
+export function circle(ctx, [x, y], radius, color, borderColor) {
   ctx.beginPath()
   ctx.strokeStyle = color
-  ctx.fillStyle = '#fff'
+  ctx.fillStyle = borderColor
   ctx.arc(x, y, radius, 0, Math.PI * 2)
   ctx.fill()
   ctx.stroke()

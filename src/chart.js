@@ -3,6 +3,18 @@ import { tooltip } from './tooltip.js'
 import { toDate, isOver, line, circle, computeBoundaries, toCoords, computeYRatio, computeXRatio } from './utils.js'
 
 export function chart(root, data) {
+  const THEMES = {
+    light: {
+      circle: '#f5f5f5',
+      legend: '#292929',
+      slider: '#f5f9fb'
+    },
+    dark: {
+      circle: '#292929',
+      legend: '#f5f5f5',
+      slider: '#282828'
+    }
+  }
   const WIDTH = 600
   const HEIGHT = 200
   const DPI_WIDTH = WIDTH * 2
@@ -16,7 +28,29 @@ export function chart(root, data) {
   const slider = sliderChart(root.querySelector('[data-el="slider"]'), data, DPI_WIDTH)
   const ctx = canvas.getContext('2d')
   const tooltipEl = tooltip(document.querySelector('[data-el]'))
+  const themeBtn = document.querySelector('#theme')
+  themeBtn.addEventListener('click', switchTheme)
   let prevMax
+
+  let raf = null
+  const proxy = new Proxy({}, {
+    set(...args) {
+      const result = Reflect.set(...args)
+      raf = requestAnimationFrame(paint)
+      return result
+    }
+  })
+
+  proxy.theme = 'light'
+  function switchTheme() {
+
+    if (proxy.theme === 'light') {
+      proxy.theme = 'dark'
+    } else {
+      proxy.theme = 'light'
+    }
+    document.body.classList.toggle('dark')
+  }
 
   function clear() {
     ctx.clearRect(0, 0, DPI_WIDTH, DPI_HEIGHT)
@@ -62,7 +96,7 @@ export function chart(root, data) {
     ctx.lineWidth = 1
     ctx.strokeStyle = '#bbb'
     ctx.font = '20px Arial'
-    ctx.fillStyle = '#222'
+    ctx.fillStyle = THEMES[proxy.theme].legend
 
     for (let i = 1; i <= ROWS_COUNT; i++) {
       const y = step * i
@@ -130,7 +164,6 @@ export function chart(root, data) {
     const xData = data.columns.filter(col => data.types[col[0]] !== 'line')[0]
     const translate = translateX(data.columns[0].length, xRatio, proxy.pos[0])
 
-
     yAxis(yMin, max)
     xAxis(xData, xRatio, proxy, yData)
     yData.forEach(col => {
@@ -142,27 +175,20 @@ export function chart(root, data) {
       for (const [x, y] of coords) {
         if (isOver(proxy
           .mouse, x, coords.length, DPI_WIDTH)) {
-          circle(ctx, [x, y], 5, colors[name])
+          circle(ctx, [x, y], 5, colors[name], THEMES[proxy.theme].circle)
           break;
         }
       }
     })
 
+    console.log('render')
+    slider.setTheme(proxy.theme, THEMES)
   }
-  let raf
 
   canvas.style.width = WIDTH + 'px'
   canvas.style.height = HEIGHT + 'px'
   canvas.width = DPI_WIDTH
   canvas.height = DPI_HEIGHT
-
-  const proxy = new Proxy({}, {
-    set(...args) {
-      const result = Reflect.set(...args)
-      raf = requestAnimationFrame(paint)
-      return result
-    }
-  })
 
   slider.subscribe(pos => {
     proxy.pos = pos
